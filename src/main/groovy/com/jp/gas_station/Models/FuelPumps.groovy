@@ -5,7 +5,11 @@ abstract class FuelPumps {
     String type
     Integer gasQuantity = 10
 
-    void addFuel(Integer quantity){
+    void addFuelToPumps(Integer quantity){
     gasQuantity += quantity
+    }
+
+    void fillUp(Integer quantityToFillUp){
+        gasQuantity -= quantityToFillUp
     }
 }

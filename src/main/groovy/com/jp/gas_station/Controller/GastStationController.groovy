@@ -37,45 +37,44 @@ class GastStationController {
 
     @PostMapping("/addGas")
     ResponseEntity addGas(@RequestBody AddFuels input) {
-        AddFuelsOutput output = new AddFuelsOutput()
-        FuelPumps pump = pumps.values().find { it.type == input.type }
-        if (input.quantity <= 0){
+        if (input.quantity <= 0) {
             return ResponseEntity.badRequest().build()
         }
-
+        FuelPumps pump = pumps.values().find { it.type == input.type }
+        if (pump == null) {
+            return ResponseEntity.badRequest().build()
+        }
         AddFuels newAddGas = new AddFuels()
         newAddGas.type = input.type
         newAddGas.quantity = input.quantity
         addedGasList.add(newAddGas)
 
-        if (pump) {
-            pump.addFuelToPumps(input.quantity)
-            output.response = " A gasolina foi adicionada"
-            output.quantityAdded = input.quantity
-            return ResponseEntity.ok(output)
-        } else {
-            return ResponseEntity.badRequest().build()
-        }
+
+        AddFuelsOutput output = new AddFuelsOutput()
+        pump.addFuelToPumps(input.quantity)
+        output.response = " A gasolina foi adicionada"
+        output.quantityAdded = input.quantity
+
+        return ResponseEntity.ok(output)
     }
+
 
     @PostMapping("/fill-up")
     ResponseEntity fillUp(@RequestBody Customers input) {
-        FillUpOutput output = new FillUpOutput()
-        FuelPumps pump = pumps.values().find { it.type == input.carGasType }
-        if (input.amountRefueled <= 0){
+        if (input.amountRefueled <= 0) {
             return ResponseEntity.badRequest().build()
         }
 
-        if (pump) {
-            if (input.amountRefueled > pump.gasQuantity || pump.gasQuantity <= 0){
-                return ResponseEntity.badRequest().build()
-            }
-            pump.fillUp(input.amountRefueled)
-            output.response = "O cliente abasteceu o carro"
-            output.amountRefueled = input.amountRefueled
-        } else {
+        FuelPumps pump = pumps.values().find { it.type == input.carGasType }
+        if (pump == null || input.amountRefueled > pump.gasQuantity || pump.gasQuantity <= 0) {
             return ResponseEntity.badRequest().build()
         }
+
+        FillUpOutput output = new FillUpOutput()
+        pump.fillUp(input.amountRefueled)
+        output.response = "O cliente abasteceu o carro"
+        output.amountRefueled = input.amountRefueled
+
 
         Customers newCustomer = new Customers()
         newCustomer.name = input.name
@@ -90,8 +89,9 @@ class GastStationController {
     ResponseEntity customerList() {
         return ResponseEntity.ok(customersList)
     }
+
     @GetMapping("/added-gas")
-    ResponseEntity gasList(){
+    ResponseEntity gasList() {
         return ResponseEntity.ok(addedGasList)
     }
 }

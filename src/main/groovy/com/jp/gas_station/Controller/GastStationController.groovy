@@ -6,6 +6,9 @@ import com.jp.gas_station.Models.Customers
 import com.jp.gas_station.Models.FillUpOutput
 import com.jp.gas_station.Models.FuelPump
 import com.jp.gas_station.Models.profitPerPump
+import com.jp.gas_station.PumpService.CustomerService
+import com.jp.gas_station.PumpService.PumpService
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -17,66 +20,62 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/station")
 class GasStationController {
-    List<AddFuel> addedGasList = []
     List<Customers> customersList = []
-    private Map<String, FuelPump> pumps = [
-            "1": new FuelPump(pumpId: 1, quantity: 0, type: "dieselGas", sellingPrice: 7, purchasePrice: 6),
-            "2": new FuelPump(pumpId: 2, quantity: 0, type: "ethanolGas", sellingPrice: 4, purchasePrice: 3),
-            "3": new FuelPump(pumpId: 3, quantity: 0, type: "additiveGas", sellingPrice: 5, purchasePrice: 4),
-            "4": new FuelPump(pumpId: 4, quantity: 0, type: "commonGas", sellingPrice: 6, purchasePrice: 5)
-    ]
+    List<AddFuel> FuelList = []
+    CustomerService customerService
+    PumpService pumpService
 
+    @Autowired
+    GasStationController(PumpService pumpService) {
+        this.pumpService = pumpService
+
+    }
 
     @GetMapping
     ResponseEntity getPumps() {
-        return ResponseEntity.ok(pumps.values().toList())
+        return ResponseEntity.ok(pumpService.getPumps())
     }
 
     @PostMapping("/createPump")
     ResponseEntity createPump(@RequestBody FuelPump newPump) {
-        FuelPump pump = pumps.values().find { it.pumpId == newPump.pumpId }
+        FuelPump pump = pumpService.pumps.values().find { it.pumpId == newPump.pumpId }
         if (pump != null) {
             return ResponseEntity.badRequest().build()
         }
         if (newPump.quantity > 0) {
             newPump.quantity = 0
         }
-        pumps.put(newPump.pumpId.toString(), newPump)
+        pumpService.addPumps(newPump)
         return ResponseEntity.noContent().build()
     }
 
 
-    @PostMapping("/addGasToPumps")
-    ResponseEntity addGas(@RequestBody FuelPump input) {
-
-        if (input.quantity <= 0 || input.quantity > 10000) {
+    @PostMapping("/addFuelToPumps")
+    ResponseEntity addFuel(@RequestBody FuelPump input) {
+        if (input.quantity <= 0 || input.quantity >= 10000) {
             return ResponseEntity.badRequest().build()
         }
 
-        FuelPump pump = pumps.values().find { it.pumpId == input.pumpId }
+        FuelPump pump = pumpService.pumps.values().find { it.pumpId == input.pumpId }
+
         if (pump == null) {
             return ResponseEntity.badRequest().build()
         }
-        // por algum motivo ainda n ta funcionando 100%
+
         if (pump.quantity >= 1000) {
             return ResponseEntity.badRequest().build()
         }
 
+        AddFuelsOutput output = pumpService.addFuelToPump(input)
 
-        AddFuel newAddGas = new AddFuel()
+//preciso desaclopar tambem essa lista
+        AddFuel addFuel = new AddFuel()
+        addFuel.pumpId = input.pumpId
+        addFuel.type = pump.type
+        addFuel.quantity = input.quantity
+        addFuel.totalCost = input.quantity * pump.purchasePrice
+        FuelList.add(addFuel)
 
-        newAddGas.pumpId = input.pumpId
-        newAddGas.type = pump.type
-        newAddGas.quantity = input.quantity
-        newAddGas.totalCost = input.quantity * pump.purchasePrice
-        addedGasList.add(newAddGas)
-
-        AddFuelsOutput output = new AddFuelsOutput()
-
-        pump.addFuelToPumps(input.quantity)
-        output.response = "O combustivel foi adicionado a bomba"
-        output.pumpId = pump.pumpId
-        output.quantityAdded = input.quantity
 
         return ResponseEntity.ok(output)
     }
@@ -84,12 +83,12 @@ class GasStationController {
 
     @PostMapping("/fill-up")
     ResponseEntity fillUp(@RequestBody Customers input) {
-
+// tambem desaclopar o customers para o customerSErvice
         if (input.amountRefueled <= 0) {
             return ResponseEntity.badRequest().build()
         }
 
-        FuelPump pump = pumps.values().find { it.pumpId == input.selectedPump }
+        FuelPump pump = pumpService.pumps.values().find { it.pumpId == input.selectedPump }
         if (pump == null || input.amountRefueled > pump.quantity || pump.quantity <= 0) {
             return ResponseEntity.badRequest().build()
         }
@@ -112,26 +111,28 @@ class GasStationController {
         return ResponseEntity.ok(output)
     }
 
+
     @GetMapping("/{id}")
-    ResponseEntity lucroDaBomba(@PathVariable("id") String id) {
+    ResponseEntity pumpProfit(@PathVariable("id") String id) {
+        // e preciso fazer metodos para calcular o profit para ficar mais legivel, e tambem desaclopar
         double totalCost = 0
-        double  totalProfit = 0
+        double totalProfit = 0
         double totalWasted = 0
-        FuelPump pump = pumps[id]
+        FuelPump pump = pumpService.pumps[id]
         profitPerPump profit = new profitPerPump()
 
-        for (AddFuel addfuel : addedGasList) {
+        for (AddFuel addfuel : FuelList) {
             if (pump.pumpId == addfuel.pumpId) {
                 totalCost += addfuel.totalCost
             }
         }
 
-            for (Customers customer : customersList) {
-                if (customer.selectedPump == pump.pumpId) {
-                    totalWasted += customer.totalPaid
-                }
+        for (Customers customer : customersList) {
+            if (customer.selectedPump == pump.pumpId) {
+                totalWasted += customer.totalPaid
             }
-            totalProfit = totalWasted - totalCost
+        }
+        totalProfit = totalWasted - totalCost
 
 
         profit.pumpId = pump.pumpId
@@ -140,9 +141,9 @@ class GasStationController {
         profit.totalWasted = totalCost
         profit.totalProfit = totalProfit
 
-            if (pump != null) {
-                return ResponseEntity.ok(profit)
-            }
+        if (pump != null) {
+            return ResponseEntity.ok(profit)
+        }
         return ResponseEntity.notFound().build()
     }
 
@@ -154,6 +155,6 @@ class GasStationController {
 
     @GetMapping("/added-gas")
     ResponseEntity gasList() {
-        return ResponseEntity.ok(addedGasList)
+        return ResponseEntity.ok(FuelList)
     }
 }

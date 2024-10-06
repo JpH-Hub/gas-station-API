@@ -2,6 +2,7 @@ package com.jp.gas_station.Models
 
 class Customers {
     String name
-    String carGasType
+    Integer selectedPump
     Integer amountRefueled
+    Double totalPaid
 }

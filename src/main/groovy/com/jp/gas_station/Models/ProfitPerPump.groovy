@@ -1,6 +1,8 @@
 package com.jp.gas_station.Models
 
-class profitPerPump {
+import org.springframework.http.HttpStatus
+
+class ProfitPerPump {
     Integer pumpId
     String type
     Double sellingPrice

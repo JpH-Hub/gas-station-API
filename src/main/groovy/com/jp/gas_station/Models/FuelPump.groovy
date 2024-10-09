@@ -4,7 +4,7 @@ class FuelPump {
     Integer pumpId
     String type
     Double sellingPrice
-    double purchasePrice
+    Double purchasePrice
     Integer quantity = 0
 
     void addFuelToPumps(Integer quantity) {
@@ -14,6 +14,5 @@ class FuelPump {
     void fillUp(Integer quantityToFillUp) {
         quantity -= quantityToFillUp
     }
-
 
 }

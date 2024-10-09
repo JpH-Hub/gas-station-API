@@ -1,6 +1,6 @@
 package com.jp.gas_station.Models
 
-class Customers {
+class Customer {
     String name
     Integer selectedPump
     Integer amountRefueled

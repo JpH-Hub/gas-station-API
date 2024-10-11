@@ -5,4 +5,7 @@ class AddFuel {
     Integer quantity
     String type
     Double totalCost
+
+
+
 }
